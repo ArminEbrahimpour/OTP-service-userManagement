@@ -27,7 +27,7 @@ func SetupRoutes(router *gin.Engine, authHandler *AuthHandler, userHandler *User
 	auth := v1.Group("/auth")
 	{
 		auth.POST("/send-otp", authHandler.SendOTP)
-		auth.POST("/verfy-otp", authHandler.VerifyOTP)
+		auth.POST("/verify-otp", authHandler.VerifyOTP)
 	}
 	// User routes (authentication required)
 	users := v1.Group("/users")

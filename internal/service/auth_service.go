@@ -32,68 +32,71 @@ func NewAuthService(userRepo repository.UserRepository, otpRepo repository.OTPRe
 }
 
 func (s *authService) SendOTP(phoneNumber string) error {
-
-	// check ratelimit
-
+	// Check rate limiting
 	count, err := s.otpRepo.IncrementRateLimit(phoneNumber)
 	if err != nil {
-		return err
-	}
-	if count > 3 {
-		ratelimit, _ := s.otpRepo.GetRateLimit(phoneNumber)
-		if ratelimit != nil {
-			return fmt.Errorf("ratelimit exceeded try again after %s", ratelimit.ResetTime)
-		}
-		return fmt.Errorf("ratelimit exceeded")
+		return fmt.Errorf("failed to check rate limit: %v", err) // Better error formatting
 	}
 
-	// generate new otp
+	if count > 3 {
+		rateLimit, _ := s.otpRepo.GetRateLimit(phoneNumber)
+		if rateLimit != nil {
+			// Fixed: Format time properly using RFC3339
+			return fmt.Errorf("rate limit exceeded. Try again after %s", rateLimit.ResetTime.Format(time.RFC3339))
+		}
+		return fmt.Errorf("rate limit exceeded")
+	}
+
+	// Generate OTP
 	otp, err := s.generateOTP()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to generate OTP: %v", err) // Better error formatting
 	}
 
-	//store otp with 2- minute expiration
+	// Store OTP with 2-minute expiration
 	expiresAt := time.Now().Add(2 * time.Minute)
 	if err := s.otpRepo.StoreOTP(phoneNumber, otp, expiresAt); err != nil {
-		return fmt.Errorf("Failed to store OTP:%s", err)
+		return fmt.Errorf("failed to store OTP: %v", err) // Better error formatting
 	}
-	return nil
 
+	return nil
 }
 
 func (s *authService) VerifyOTP(phoneNumber, code string) (*models.AuthResponse, error) {
-	// get and verify otp
-	storedotp, err := s.otpRepo.GetOTP(phoneNumber)
+	// Get and verify OTP
+	storedOTP, err := s.otpRepo.GetOTP(phoneNumber)
 	if err != nil {
-		return nil, fmt.Errorf("Failed getting otp :%s", err)
+		// Fixed: More user-friendly error message
+		return nil, fmt.Errorf("invalid or expired OTP")
 	}
-	if storedotp.Code != code {
+
+	if storedOTP.Code != code {
 		return nil, fmt.Errorf("invalid OTP code")
 	}
 
-	// delete used otp
+	// Delete used OTP
 	s.otpRepo.DeleteOTP(phoneNumber)
 
-	// check if user exists
+	// Check if user exists
 	user, err := s.userRepo.GetUserByPhoneNumber(phoneNumber)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
-			// register new user
+			// Register new user
 			user, err = s.userRepo.CreateUser(phoneNumber)
 			if err != nil {
-				return nil, fmt.Errorf("Failed creating new user: %v", err)
+				return nil, fmt.Errorf("failed to create user: %v", err)
 			}
-
 		} else {
-			return nil, fmt.Errorf("Failed to get user: %v", err)
+			return nil, fmt.Errorf("failed to get user: %v", err)
 		}
 	}
-	// generate jwt token
+
+	// Generate JWT token
 	token, err := jwt.GenerateToken(user.ID, s.jwtSecret)
 	if err != nil {
-		return nil, fmt.Errorf("Failed generating token for user ")
+		return nil, fmt.Errorf("failed to generate token: %v", err) // Fixed: Include error details
 	}
+
 	return &models.AuthResponse{
 		Token: token,
 		User:  *user,
@@ -101,7 +104,7 @@ func (s *authService) VerifyOTP(phoneNumber, code string) (*models.AuthResponse,
 }
 
 func (s *authService) generateOTP() (string, error) {
-	// generate 6digit otp
+	// Generate a 6-digit OTP
 	max := big.NewInt(999999)
 	min := big.NewInt(100000)
 
@@ -109,6 +112,7 @@ func (s *authService) generateOTP() (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	n.Add(n, min)
 	return n.String(), nil
 }

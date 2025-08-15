@@ -13,7 +13,7 @@ type OTPRepository interface {
 	DeleteOTP(phoneNumber string) error
 	IncrementRateLimit(phoneNumber string) (int, error)
 	GetRateLimit(phoneNumber string) (*models.RateLimit, error)
-	CleanupExpiredOTP() error
+	CleanupExpiredOTPs() // Fixed: Method name should match implementation
 }
 
 type otpRepository struct {
@@ -28,6 +28,7 @@ func NewOTPRepository() OTPRepository {
 		rateLimits: make(map[string]*models.RateLimit),
 	}
 
+	// Start cleanup routine
 	go repo.cleanupRoutine()
 
 	return repo
@@ -43,22 +44,26 @@ func (r *otpRepository) StoreOTP(phoneNumber, code string, expiresAt time.Time) 
 		ExpiresAt:   expiresAt,
 		CreatedAt:   time.Now(),
 	}
-	// printing otp in console as said
-	fmt.Printf("OTP for %s : %s (expires at %s) \n", phoneNumber, code, expiresAt)
+
+	// Print OTP to console as required
+	fmt.Printf("OTP for %s: %s (expires at %s)\n", phoneNumber, code, expiresAt.Format(time.RFC3339))
+
 	return nil
 }
 
 func (r *otpRepository) GetOTP(phoneNumber string) (*models.OTP, error) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
+	r.mu.RLock() // Fixed: Use RLock for read operations
+	defer r.mu.RUnlock()
 
 	otp, exists := r.otps[phoneNumber]
 	if !exists {
 		return nil, fmt.Errorf("OTP not found")
 	}
+
 	if time.Now().After(otp.ExpiresAt) {
 		return nil, fmt.Errorf("OTP expired")
 	}
+
 	return otp, nil
 }
 
@@ -75,9 +80,10 @@ func (r *otpRepository) IncrementRateLimit(phoneNumber string) (int, error) {
 	defer r.mu.Unlock()
 
 	now := time.Now()
-	ratelimit, err := r.GetRateLimit(phoneNumber)
-	if err != nil {
-		// create new rate limit
+	rateLimit, exists := r.rateLimits[phoneNumber]
+
+	if !exists || now.After(rateLimit.ResetTime) {
+		// Create new rate limit entry
 		r.rateLimits[phoneNumber] = &models.RateLimit{
 			PhoneNumber: phoneNumber,
 			Count:       1,
@@ -85,41 +91,47 @@ func (r *otpRepository) IncrementRateLimit(phoneNumber string) (int, error) {
 		}
 		return 1, nil
 	}
-	// increment 1
-	ratelimit.Count += 1
-	return ratelimit.Count, nil
+
+	// Increment existing count
+	rateLimit.Count++
+	return rateLimit.Count, nil
 }
 
 func (r *otpRepository) GetRateLimit(phoneNumber string) (*models.RateLimit, error) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
+	r.mu.RLock() // Fixed: Use RLock for read operations
+	defer r.mu.RUnlock()
 
-	ratelimit, exists := r.rateLimits[phoneNumber]
+	rateLimit, exists := r.rateLimits[phoneNumber]
 	if !exists {
-		return nil, fmt.Errorf("rateLimit not exists")
+		return nil, fmt.Errorf("rate limit not found")
 	}
-	if time.Now().After(ratelimit.ResetTime) {
+
+	if time.Now().After(rateLimit.ResetTime) {
 		return nil, fmt.Errorf("rate limit expired")
 	}
-	return ratelimit, nil
+
+	return rateLimit, nil
 }
 
-func (r *otpRepository) CleanupExpiredOTP() error {
+func (r *otpRepository) CleanupExpiredOTPs() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+
 	now := time.Now()
+
+	// Clean up expired OTPs
 	for phoneNumber, otp := range r.otps {
 		if now.After(otp.ExpiresAt) {
 			delete(r.otps, phoneNumber)
 		}
 	}
-	// cleanup expired ratelimits
-	for phoneNumber, ratelimit := range r.rateLimits {
-		if now.After(ratelimit.ResetTime) {
+
+	// Clean up expired rate limits
+	for phoneNumber, rateLimit := range r.rateLimits {
+		if now.After(rateLimit.ResetTime) {
 			delete(r.rateLimits, phoneNumber)
 		}
 	}
-	return nil
 }
 
 func (r *otpRepository) cleanupRoutine() {
@@ -129,7 +141,7 @@ func (r *otpRepository) cleanupRoutine() {
 	for {
 		select {
 		case <-ticker.C:
-			r.CleanupExpiredOTP()
+			r.CleanupExpiredOTPs()
 		}
 	}
 }
