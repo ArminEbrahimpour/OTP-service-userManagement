@@ -1,0 +1,47 @@
+version: "3.8"
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: otp-postgres
+    environment:
+      POSTGRES_DB: otpdb
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - otp-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d otpdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # OTP Service Application
+  otp-service:
+    build: .
+    container_name: otp-service
+    environment:
+      PORT: 8080
+      DATABASE_URL: postgres://user:password@postgres:5432/otpdb?sslmode=disable
+      JWT_SECRET: thisISTheJWTSUPERSecretStRingWhichShouldNOTbeEXPOSEDlol
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - otp-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+
+networks:
+  otp-network:
+    driver: bridge
