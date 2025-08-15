@@ -24,7 +24,9 @@ services:
 
   # OTP Service Application
   otp-service:
-    build: .
+    build:
+      context: .
+      dockerfile: ./cmd/Dockerfile
     container_name: otp-service
     environment:
       PORT: 8080

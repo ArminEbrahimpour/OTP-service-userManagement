@@ -3,8 +3,14 @@ package main
 import (
 	"log"
 
+	"otp-service/config"
+	"otp-service/internal/api"
+	"otp-service/internal/repository"
+	"otp-service/internal/service"
+	"otp-service/pkg/database"
+	"otp-service/pkg/middleware"
+
 	"github.com/gin-gonic/gin"
-	"honnef.co/go/tools/config"
 )
 
 func main() {
@@ -38,7 +44,7 @@ func main() {
 	router := gin.Default()
 
 	// add middle ware
-	router.Use(middelware.CORS())
+	router.Use(middleware.CORS())
 	router.Use(middleware.RequestLogger())
 
 	// setup routes
