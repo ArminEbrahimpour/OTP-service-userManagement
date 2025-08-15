@@ -26,7 +26,7 @@ func NewUserHandler(userService service.UserService) *UserHandler {
 // @Success 200 {object} models.User
 // @Failure 400 {object} map[string]string
 // @Failure 429 {object} map[string]string
-// @Router /users/{id} [get]
+// @Router /api/v1/users/{id} [get]
 func (h *UserHandler) GetUser(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseUint(idStr, 10, 32)
@@ -45,6 +45,7 @@ func (h *UserHandler) GetUser(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, user)
+
 }
 
 // GetUsers godoc
@@ -55,25 +56,23 @@ func (h *UserHandler) GetUser(c *gin.Context) {
 // @Produce json
 // @Param page_size query int false "Page size" default(10)
 // @Param page query int false "Page number" default(1)
-// @Param search qeury string false "Search by phone number"
+// @Param search query string false "Search by phone number"
 // @Success 200 {object} models.UserListResponse
 // @Failure 400 {object} map[string]string
 // @Failure 429 {object} map[string]string
-// @Security BearerAuth
-// @Router /users [get]
-
+// @Router /api/v1/users [get]
 func (h *UserHandler) GetUsers(c *gin.Context) {
 	page := 1
 	pageSize := 10
 	search := c.Query("search")
 
 	if pageStr := c.Query("page"); pageStr != "" {
-		if p, err := strconv.Atoi(pageStr); err != nil && p > 0 {
+		if p, err := strconv.Atoi(pageStr); err == nil && p > 0 {
 			page = p
 		}
 	}
 	if sizeStr := c.Query("page_size"); sizeStr != "" {
-		if s, err := strconv.Atoi(sizeStr); err != nil && s > 0 && s <= 100 {
+		if s, err := strconv.Atoi(sizeStr); err == nil && s > 0 && s <= 100 {
 			pageSize = s
 		}
 	}

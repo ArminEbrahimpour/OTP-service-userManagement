@@ -1,3 +1,4 @@
+basePath: /
 definitions:
   models.AuthResponse:
     properties:
@@ -31,11 +32,32 @@ definitions:
       updated_at:
         type: string
     type: object
+  models.UserListResponse:
+    properties:
+      page:
+        type: integer
+      page_size:
+        type: integer
+      total:
+        type: integer
+      total_page:
+        type: integer
+      users:
+        items:
+          $ref: '#/definitions/models.User'
+        type: array
+    type: object
+host: localhost:8080
 info:
   contact: {}
+  description: A simple OTP-based authentication service
+  title: OTP Service API
+  version: "1.1"
 paths:
-  /auth/send-otp:
+  /api/v1/auth/send-otp:
     post:
+      consumes:
+      - application/json
       description: Send a 6 digit OTP code to the specific phone number
       parameters:
       - description: Phone number
@@ -68,6 +90,81 @@ paths:
       summary: Send otp to phone number
       tags:
       - auth
+  /api/v1/users:
+    get:
+      consumes:
+      - application/json
+      description: Get a paginated users list with optional search
+      parameters:
+      - default: 10
+        description: Page size
+        in: query
+        name: page_size
+        type: integer
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Search by phone number
+        in: query
+        name: search
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.UserListResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "429":
+          description: Too Many Requests
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get list of users
+      tags:
+      - users
+  /api/v1/users/{id}:
+    get:
+      consumes:
+      - application/json
+      description: get a single user by speicified ID
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.User'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "429":
+          description: Too Many Requests
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get user by ID
+      tags:
+      - users
   /auth/verify-otp:
     post:
       consumes:
@@ -102,37 +199,4 @@ paths:
       summary: Verify OTP and authenticate user
       tags:
       - auth
-  /users/{id}:
-    get:
-      consumes:
-      - application/json
-      description: get a single user by speicified ID
-      parameters:
-      - description: User ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/models.User'
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "429":
-          description: Too Many Requests
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: Get user by ID
-      tags:
-      - users
 swagger: "2.0"

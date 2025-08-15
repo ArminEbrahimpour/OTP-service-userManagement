@@ -41,7 +41,7 @@ func (s *authService) SendOTP(phoneNumber string) error {
 	if count > 3 {
 		rateLimit, _ := s.otpRepo.GetRateLimit(phoneNumber)
 		if rateLimit != nil {
-			// Fixed: Format time properly using RFC3339
+
 			return fmt.Errorf("rate limit exceeded. Try again after %s", rateLimit.ResetTime.Format(time.RFC3339))
 		}
 		return fmt.Errorf("rate limit exceeded")
@@ -66,7 +66,7 @@ func (s *authService) VerifyOTP(phoneNumber, code string) (*models.AuthResponse,
 	// Get and verify OTP
 	storedOTP, err := s.otpRepo.GetOTP(phoneNumber)
 	if err != nil {
-		// Fixed: More user-friendly error message
+
 		return nil, fmt.Errorf("invalid or expired OTP")
 	}
 

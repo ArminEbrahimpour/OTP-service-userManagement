@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"otp-service/internal/models"
 	"otp-service/internal/service"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -22,13 +23,13 @@ func NewAuthHandler(authService service.AuthService) *AuthHandler {
 // @Summary Send otp to phone number
 // @Description Send a 6 digit OTP code to the specific phone number
 // @Tags auth
-// @Accepts json
+// @Accept json
 // @Produce json
 // @Param request body models.OTPRequest true "Phone number"
 // @Success 200 {object} map[string]string
 // @Failure 400 {object} map[string]string
 // @Failure 429 {object} map[string]string
-// @Router /auth/send-otp [post]
+// @Router /api/v1/auth/send-otp [post]
 func (h *AuthHandler) SendOTP(c *gin.Context) {
 	var req models.OTPRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -37,7 +38,7 @@ func (h *AuthHandler) SendOTP(c *gin.Context) {
 	}
 
 	if err := h.authService.SendOTP(req.PhoneNumber); err != nil {
-		if err.Error() == "rate limit exceeded" || err.Error()[:17] == "rate limit exceeded" {
+		if err.Error() == "rate limit exceeded" || strings.Contains(err.Error(), "rate limit exceeded") {
 			c.JSON(http.StatusTooManyRequests, gin.H{"error": err.Error()})
 			return
 		}
@@ -59,7 +60,7 @@ func (h *AuthHandler) SendOTP(c *gin.Context) {
 // @Router /auth/verify-otp [post]
 func (h *AuthHandler) VerifyOTP(c *gin.Context) {
 	var req models.OTPVerifyReq
-	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
+	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -68,5 +69,5 @@ func (h *AuthHandler) VerifyOTP(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": response})
+	c.JSON(http.StatusOK, response)
 }

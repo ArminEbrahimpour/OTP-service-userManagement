@@ -2,8 +2,8 @@ package main
 
 import (
 	"log"
-
 	"otp-service/config"
+	_ "otp-service/docs"
 	"otp-service/internal/api"
 	"otp-service/internal/repository"
 	"otp-service/internal/service"
@@ -13,6 +13,11 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// @title OTP Service API
+// @version 1.1
+// @description A simple OTP-based authentication service
+// @host localhost:8080
+// @BasePath /
 func main() {
 
 	conf := config.Load()
