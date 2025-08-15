@@ -43,7 +43,7 @@ func (r *otpRepository) StoreOTP(phoneNumber, code string, expiresAt time.Time) 
 		ExpiresAt:   expiresAt,
 		CreatedAt:   time.Now(),
 	}
-	// printint otp in console
+	// printing otp in console as said
 	fmt.Printf("OTP for %s : %s (expires at %s) \n", phoneNumber, code, expiresAt)
 	return nil
 }
